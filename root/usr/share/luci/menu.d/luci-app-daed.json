@@ -6,8 +6,7 @@
 			"type": "firstchild"
 		},
 		"depends": {
-			"acl": [ "luci-app-daed" ],
-			"uci": { "daed": true }
+			"acl": [ "luci-app-daed" ]
 		}
 	},
 	"admin/services/daed/config": {

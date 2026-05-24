@@ -112,3 +112,36 @@ msgstr "daed WebUI 与 GraphQL API 监听的 Host:Port。"
 
 msgid "daed"
 msgstr "daed"
+
+msgid "Backend"
+msgstr "后端"
+
+msgid "Configuration File"
+msgstr "配置文件"
+
+msgid "Hot Reload"
+msgstr "热重载"
+
+msgid "Initialize from example"
+msgstr "从示例初始化"
+
+msgid "Save and Hot Reload"
+msgstr "保存并热重载"
+
+msgid "dae Configuration"
+msgstr "dae 配置"
+
+msgid "dae and daed may be installed together, but they cannot run at the same time because both attach eBPF programs to cgroup."
+msgstr "dae 和 daed 可以同时安装，但不能同时运行，因为两者都会把 eBPF 程序挂到 cgroup。"
+
+msgid "Selected backend is not installed. Install dae or daed from the package feed first."
+msgstr "当前选择的后端未安装。请先从软件源安装 dae 或 daed。"
+
+msgid "%s is already running. Stop %s before starting %s because both backends share the same eBPF/cgroup attachment."
+msgstr "%s 已在运行。%s 与 %s 共用 eBPF/cgroup 挂载点，请先停止前者。"
+
+msgid "Run \"apk upgrade %s\" now? This may restart the active backend."
+msgstr "现在运行 \"apk upgrade %s\" 吗？这可能会重启当前后端。"
+
+msgid "Truncate %s log on the router? This cannot be undone."
+msgstr "确定要清空路由器上的 %s 日志吗？此操作不可恢复。"

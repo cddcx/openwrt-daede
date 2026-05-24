@@ -6,7 +6,7 @@
 
 PKG="$1"
 case "$PKG" in
-	daed|luci-app-daed) ;;
+	dae|daed|luci-app-daed) ;;
 	*) echo "" ; exit 64 ;;
 esac
 
@@ -14,9 +14,15 @@ installed=""
 latest=""
 
 if command -v apk >/dev/null 2>&1; then
-	# `apk info -e <pkg>` exits 0 if installed; `apk info <pkg>` includes version
-	installed=$(apk info "$PKG" 2>/dev/null | head -1 | awk '{print $1}' | sed "s/^${PKG}-//")
-	# `apk search` returns the highest version known to the cached indexes
+	if apk info -e "$PKG" >/dev/null 2>&1; then
+		installed=$(apk list -I "$PKG" 2>/dev/null | awk -v p="$PKG" '
+			$1 ~ "^" p "-" {
+				sub("^" p "-", "", $1);
+				print $1;
+				exit
+			}
+		')
+	fi
 	latest=$(apk search "^${PKG}\$" 2>/dev/null | sort -V | tail -1 | sed "s/^${PKG}-//")
 elif command -v opkg >/dev/null 2>&1; then
 	installed=$(opkg status "$PKG" 2>/dev/null | awk -F': ' '$1=="Version"{print $2; exit}')

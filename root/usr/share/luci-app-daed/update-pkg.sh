@@ -1,14 +1,14 @@
 #!/bin/sh
-# update-pkg.sh <daed|luci-app-daed>
+# update-pkg.sh <dae|daed|luci-app-daed>
 # Refresh package indexes and upgrade the named package via apk (25.12+) or
 # opkg (24.10). Forks the work to background so the LuCI RPC call returns
 # immediately; the result is streamed to /tmp/luci-app-daed.pkg.<name>.log.
 
 PKG="$1"
 case "$PKG" in
-	daed|luci-app-daed) ;;
+	dae|daed|luci-app-daed) ;;
 	*)
-		echo "usage: $0 <daed|luci-app-daed>" >&2
+		echo "usage: $0 <dae|daed|luci-app-daed>" >&2
 		exit 64
 		;;
 esac

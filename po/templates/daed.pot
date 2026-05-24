@@ -105,3 +105,36 @@ msgstr ""
 
 msgid "daed"
 msgstr ""
+
+msgid "Backend"
+msgstr ""
+
+msgid "Configuration File"
+msgstr ""
+
+msgid "Hot Reload"
+msgstr ""
+
+msgid "Initialize from example"
+msgstr ""
+
+msgid "Save and Hot Reload"
+msgstr ""
+
+msgid "dae Configuration"
+msgstr ""
+
+msgid "dae and daed may be installed together, but they cannot run at the same time because both attach eBPF programs to cgroup."
+msgstr ""
+
+msgid "Selected backend is not installed. Install dae or daed from the package feed first."
+msgstr ""
+
+msgid "%s is already running. Stop %s before starting %s because both backends share the same eBPF/cgroup attachment."
+msgstr ""
+
+msgid "Run \"apk upgrade %s\" now? This may restart the active backend."
+msgstr ""
+
+msgid "Truncate %s log on the router? This cannot be undone."
+msgstr ""

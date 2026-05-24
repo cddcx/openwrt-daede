@@ -12,6 +12,17 @@
 
 set -e
 
+if ! uci -q get daed_luci.config >/dev/null 2>&1; then
+	touch /etc/config/daed_luci
+	uci -q set daed_luci.config=daed_luci
+	if [ -f /etc/init.d/daed ]; then
+		uci -q set daed_luci.config.active_backend='daed'
+	else
+		uci -q set daed_luci.config.active_backend='dae'
+	fi
+	uci -q commit daed_luci
+fi
+
 INIT="/etc/init.d/daed"
 MARKER="# luci-app-daed: netns-cleanup"
 

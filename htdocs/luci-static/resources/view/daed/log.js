@@ -5,8 +5,8 @@
 'require poll';
 'require ui';
 'require view';
+'require view.daed.backend as backend';
 
-const LOG_PATH = '/var/log/daed/daed.log';
 const MAX_LINES = 5000;
 
 const CSS = [
@@ -42,8 +42,13 @@ function detectLevel(line) {
 }
 
 return view.extend({
-	render() {
+	load: function() {
+		return backend.detectBackend();
+	},
+
+	render(ctx) {
 		const self = this;
+		const LOG_PATH = ctx.backend.log;
 		const state = {
 			lastContent: '',
 			lastSize: -1,
@@ -97,7 +102,7 @@ return view.extend({
 			const url = URL.createObjectURL(blob);
 			const a = document.createElement('a');
 			a.href = url;
-			a.download = 'daed-' + (new Date()).toISOString().replace(/[:.]/g, '-') + '.log';
+			a.download = ctx.name + '-' + (new Date()).toISOString().replace(/[:.]/g, '-') + '.log';
 			document.body.appendChild(a);
 			a.click();
 			document.body.removeChild(a);
@@ -106,7 +111,7 @@ return view.extend({
 
 		const btnTruncate = E('button', { 'class': 'dd-log-btn' }, 'Clear File');
 		btnTruncate.addEventListener('click', function() {
-			if (!confirm(_('Truncate daed.log on the router? This cannot be undone.')))
+			if (!confirm(_('Truncate %s log on the router? This cannot be undone.').format(ctx.name)))
 				return;
 			fs.write(LOG_PATH, '').then(function() {
 				ui.addNotification(null, E('p', _('Log file cleared.')), 'info');

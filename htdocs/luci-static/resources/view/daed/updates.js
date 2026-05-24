@@ -3,8 +3,10 @@
 'use strict';
 'require fs';
 'require poll';
+'require uci';
 'require ui';
 'require view';
+'require view.daed.backend as backend';
 
 const DATA_PATHS = {
 	geoip:   '/usr/share/v2ray/geoip.dat',
@@ -12,7 +14,7 @@ const DATA_PATHS = {
 };
 
 const HEALTH_PATHS = {
-	btf:   '/sys/kernel/btf/vmlinux',
+	btf: '/sys/kernel/btf/vmlinux',
 	netns: '/run/netns/daens'
 };
 
@@ -76,8 +78,25 @@ function tailLog(path, into) {
 }
 
 return view.extend({
-	render: function() {
+	load: function() {
+		return Promise.all([
+			backend.detectBackend(),
+			uci.load('daed').catch(function() {})
+		]).then(function(r) {
+			return r[0];
+		});
+	},
+
+	render: function(ctx) {
 		const logPane = E('pre', { 'class': 'dd-up-log', 'id': 'dd-up-log' }, '');
+		const corePkgs = [];
+		const addCorePkg = function(name) {
+			if (corePkgs.indexOf(name) === -1)
+				corePkgs.push(name);
+		};
+		addCorePkg(ctx.name);
+		addCorePkg('daed');
+		addCorePkg('dae');
 
 		const dataBody = E('div', { 'id': 'dd-up-data' }, E('em', {}, _('Probing…')));
 		const pkgBody  = E('div', { 'id': 'dd-up-pkg'  }, E('em', {}, _('Probing…')));
@@ -115,9 +134,9 @@ return view.extend({
 			});
 		};
 
-		// === Package updates (daed / luci-app-daed) ===
+		// === Package updates (dae|daed / luci-app-daed) ===
 		const upgradePkg = function(pkg, btn) {
-			if (!confirm(_('Run "apk upgrade %s" now? This may restart daed.').format(pkg)))
+			if (!confirm(_('Run "apk upgrade %s" now? This may restart the active backend.').format(pkg)))
 				return;
 			btn.disabled = true;
 			btn.textContent = '...';
@@ -139,15 +158,31 @@ return view.extend({
 		};
 
 		const refresh = function() {
-			return Promise.all([
+			const probes = [
 				probeFile(DATA_PATHS.geoip),
 				probeFile(DATA_PATHS.geosite),
-				probePkg('daed'),
-				probePkg('luci-app-daed'),
 				probeFile(HEALTH_PATHS.btf),
-				probeFile(HEALTH_PATHS.netns)
-			]).then(function(r) {
-				const geoip = r[0], geosite = r[1], daed = r[2], luci = r[3], btf = r[4], ns = r[5];
+				backend.detectRunning(),
+				backend.serviceStatus(ctx.name)
+			];
+
+			corePkgs.forEach(function(pkg) {
+				probes.push(probePkg(pkg));
+			});
+			probes.push(probePkg('luci-app-daed'));
+
+			if (ctx.backend.useNetns)
+				probes.push(probeFile(HEALTH_PATHS.netns));
+
+			return Promise.all(probes).then(function(r) {
+				const geoip = r[0], geosite = r[1], btf = r[2], running = r[3], service = r[4];
+				const pkgOffset = 5;
+				const coreInfo = {};
+				corePkgs.forEach(function(pkg, i) {
+					coreInfo[pkg] = r[pkgOffset + i];
+				});
+				const luci = r[pkgOffset + corePkgs.length];
+				const ns = r[pkgOffset + corePkgs.length + 1];
 
 				// data rows
 				while (dataBody.firstChild) dataBody.removeChild(dataBody.firstChild);
@@ -171,10 +206,12 @@ return view.extend({
 
 				// pkg rows
 				while (pkgBody.firstChild) pkgBody.removeChild(pkgBody.firstChild);
-				[
-					{ k: 'daed',          name: 'daed binary',    r: daed },
-					{ k: 'luci-app-daed', name: 'luci-app-daed',  r: luci }
-				].forEach(function(entry) {
+				corePkgs.map(function(pkg) {
+					const label = pkg + ' binary' + (ctx.name === pkg ? ' · ' + _('active') : '');
+					return { k: pkg, name: label, r: coreInfo[pkg] };
+				}).concat([
+					{ k: 'luci-app-daed', name: 'luci-app-daed', r: luci }
+				]).forEach(function(entry) {
 					const btn = E('button', { 'class': 'dd-up-btn' }, 'Upgrade');
 					btn.addEventListener('click', function() { upgradePkg(entry.k, btn); });
 					const sameVersion = entry.r.installed && entry.r.latest && entry.r.installed === entry.r.latest;
@@ -201,12 +238,32 @@ return view.extend({
 
 				// health rows
 				while (healthBody.firstChild) healthBody.removeChild(healthBody.firstChild);
+				healthBody.appendChild(mkRow(
+					running[ctx.name] ? '✓' : '✗',
+					running[ctx.name] ? 'dd-up-ok' : 'dd-up-err',
+					ctx.name + ' process',
+					running[ctx.name] ? _('pgrep reports the backend is running') : _('backend process is not running')
+				));
+
 				if (btf.exists)
 					healthBody.appendChild(mkRow('✓', 'dd-up-ok', 'Kernel BTF', HEALTH_PATHS.btf + ' · ' + fmtBytes(btf.size)));
 				else
 					healthBody.appendChild(mkRow('✗', 'dd-up-err', 'Kernel BTF', _('not available — eBPF needs CONFIG_DEBUG_INFO_BTF or vmlinux-btf')));
 
-				if (ns.exists) {
+				if (ctx.backend.hasWebUI) {
+					const listenAddr = uci.get('daed', 'config', 'listen_addr') || ctx.backend.defaultListen;
+					const port = listenAddr.split(':').slice(-1)[0];
+					healthBody.appendChild(mkRow(
+						service.running ? '✓' : '✗',
+						service.running ? 'dd-up-ok' : 'dd-up-err',
+						'WebUI/API',
+						service.running ? _('service is running, expected on port %s').format(port) : _('service is stopped')
+					));
+				} else {
+					healthBody.appendChild(mkRow('✓', 'dd-up-ok', 'Hot reload', _('/etc/init.d/dae hot_reload is available')));
+				}
+
+				if (ctx.backend.useNetns && ns && ns.exists) {
 					const btn = E('button', { 'class': 'dd-up-btn' }, 'Clean');
 					btn.addEventListener('click', function() {
 						btn.disabled = true;
@@ -215,7 +272,7 @@ return view.extend({
 						}).finally(function() { btn.disabled = false; });
 					});
 					healthBody.appendChild(mkRow('⚠', 'dd-up-warn', 'netns daens', HEALTH_PATHS.netns + ' · ' + _('exists, may block daed start'), btn));
-				} else {
+				} else if (ctx.backend.useNetns) {
 					healthBody.appendChild(mkRow('✓', 'dd-up-ok', 'netns daens', HEALTH_PATHS.netns + ' · ' + _('clean')));
 				}
 			});
