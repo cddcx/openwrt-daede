@@ -205,3 +205,15 @@ msgstr "跳转到该行"
 
 msgid "Placeholder lines (click line number to jump):"
 msgstr "占位行（点行号跳转）："
+
+msgid "Insert config block at cursor"
+msgstr "在光标处插入配置块"
+
+msgid "+ Insert Block…"
+msgstr "+ 插入块…"
+
+msgid "lines"
+msgstr "行"
+
+msgid "⚠ %d placeholder"
+msgstr "⚠ %d 处占位"

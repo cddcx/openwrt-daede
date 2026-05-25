@@ -62,7 +62,16 @@ const CSS = [
 	'.dd-adv:not(.dd-closed) .dd-adv-chevron{transform:rotate(90deg)}',
 	'.dd-adv-body{margin-top:8px;padding:2px 4px 4px}',
 	'.dd-adv.dd-closed .dd-adv-body{display:none}',
-	'.dd-editor{width:100%;min-height:460px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;font-size:12px;line-height:1.5;box-sizing:border-box;resize:vertical}',
+	'.dd-editor{width:100%;min-height:460px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;font-size:12px;line-height:1.5;box-sizing:border-box;resize:vertical;border-radius:6px 6px 0 0}',
+	'.dd-editor-footer{display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:5px 10px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:10.5px;background:rgba(128,128,128,.06);border:1px solid rgba(0,0,0,.06);border-top:0;border-radius:0 0 6px 6px;color:inherit;opacity:.78}',
+	'.dd-editor-footer .dd-fb-item{display:inline-flex;align-items:center;gap:5px}',
+	'.dd-editor-footer .dd-fb-key{opacity:.55}',
+	'.dd-editor-footer .dd-fb-warn{color:#b07d00;font-weight:600}',
+	'.dd-editor-footer .dd-fb-ok{color:#3da66a;font-weight:600}',
+	'body.dark .dd-editor-footer,html[data-theme="dark"] .dd-editor-footer,html[data-bs-theme="dark"] .dd-editor-footer{border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.04)}',
+	'body.dark .dd-editor-footer .dd-fb-warn,html[data-theme="dark"] .dd-editor-footer .dd-fb-warn,html[data-bs-theme="dark"] .dd-editor-footer .dd-fb-warn{color:#e0b34a}',
+	'.dd-insert-select{font-size:11.5px;padding:4px 8px;border-radius:5px;border:1px solid rgba(128,128,128,.35);background:transparent;color:inherit;cursor:pointer}',
+	'.dd-insert-select:hover{border-color:rgba(56,134,161,.55)}',
 	'.dd-editor-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}',
 	'.dd-editor-status{margin-left:auto;font-size:11.5px;opacity:0;transition:opacity .25s ease;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}',
 	'.dd-editor-status.show{opacity:1}',
@@ -399,6 +408,55 @@ function renderDaeSettings() {
 /* dae 示例里的占位订阅特征 —— example.com 域名或 relative/path/to/* 路径 */
 const RE_PLACEHOLDER_URL = /(['"])((?:https?|https-file|file):\/\/[^'"]*?(?:example\.com|relative\/path\/to)[^'"]*)\1/;
 
+/* 常用块片段 —— 给文本模式用户一键插入官方推荐结构 */
+const SNIPPETS = {
+	subscription:
+		'\nsubscription {\n' +
+		'    # 把下面这行换成你的机场订阅链接\n' +
+		"    my_sub: 'https://your-airport.example/subscription'\n" +
+		'}\n',
+	node:
+		'\nnode {\n' +
+		'    # 单条节点链接（ss/vmess/trojan/vless 等 share link）\n' +
+		"    # 'ss://...'\n" +
+		'}\n',
+	group:
+		'\ngroup {\n' +
+		'    my_group {\n' +
+		'        # 节点选择策略：min_moving_avg / min / random / fixed(0)\n' +
+		'        policy: min_moving_avg\n' +
+		'    }\n' +
+		'}\n',
+	routing:
+		'\nrouting {\n' +
+		'    # 私网直连\n' +
+		'    dip(geoip:private) -> direct\n' +
+		'    # 国内直连\n' +
+		'    dip(geoip:cn) -> direct\n' +
+		'    domain(geosite:cn) -> direct\n' +
+		'    # 兜底：走代理组\n' +
+		'    fallback: my_group\n' +
+		'}\n',
+	dns:
+		'\ndns {\n' +
+		'    upstream {\n' +
+		"        alidns: 'udp://dns.alidns.com:53'\n" +
+		"        googledns: 'tcp+udp://dns.google:53'\n" +
+		'    }\n' +
+		'    routing {\n' +
+		'        request {\n' +
+		'            qname(geosite:cn) -> alidns\n' +
+		'            fallback: googledns\n' +
+		'        }\n' +
+		'    }\n' +
+		'}\n',
+	include:
+		'\ninclude {\n' +
+		'    # 相对路径：相对于 dae -c 指定的入口配置目录\n' +
+		'    config.d/*.dae\n' +
+		'}\n'
+};
+
 /* 把 example.dae 的 subscription 块瘦身成「只保留 1 行占位 + 中文引导注释」，
    降低用户认知负担。其他块（global/node/group/routing/dns）原样保留。 */
 function simplifySubscriptionBlock(text) {
@@ -461,6 +519,40 @@ function renderDaeEditor() {
 		E('ul', { 'class': 'dd-ph-list' })
 	]);
 
+	/* Insert Block 下拉：选完后自动复位到首项 */
+	const insertSelect = E('select', { 'class': 'dd-insert-select', 'title': _('Insert config block at cursor') }, [
+		E('option', { 'value': '' }, _('+ Insert Block…')),
+		E('option', { 'value': 'subscription' }, 'subscription'),
+		E('option', { 'value': 'node' }, 'node'),
+		E('option', { 'value': 'group' }, 'group'),
+		E('option', { 'value': 'routing' }, 'routing'),
+		E('option', { 'value': 'dns' }, 'dns'),
+		E('option', { 'value': 'include' }, 'include')
+	]);
+
+	/* Footer：dae version · 行数 · 占位剩余 */
+	const fbVer  = E('span', { 'class': 'dd-fb-item' }, [ E('span', { 'class': 'dd-fb-key' }, 'dae'), E('span', {}, '—') ]);
+	const fbLine = E('span', { 'class': 'dd-fb-item' }, [ E('span', { 'class': 'dd-fb-key' }, _('lines')), E('span', {}, '0') ]);
+	const fbStat = E('span', { 'class': 'dd-fb-item dd-fb-ok' }, '✓ ready');
+	const footer = E('div', { 'class': 'dd-editor-footer' }, [ fbVer, fbLine, fbStat ]);
+
+	function insertAtCursor(text) {
+		const start = textarea.selectionStart;
+		const end   = textarea.selectionEnd;
+		const v     = textarea.value;
+		textarea.value = v.slice(0, start) + text + v.slice(end);
+		const pos = start + text.length;
+		textarea.focus();
+		textarea.setSelectionRange(pos, pos);
+		refreshPlaceholders();
+	}
+
+	insertSelect.addEventListener('change', function() {
+		const key = insertSelect.value;
+		insertSelect.value = '';
+		if (key && SNIPPETS[key]) insertAtCursor(SNIPPETS[key]);
+	});
+
 	let statusTimer = null;
 	function flashStatus(text, kind, holdMs) {
 		status.textContent = text;
@@ -484,12 +576,27 @@ function renderDaeEditor() {
 		textarea.scrollTop = Math.max(0, (lineNo - 4) * lineHeight);
 	}
 
+	function refreshFooter(phCount) {
+		const lines = textarea.value ? textarea.value.split('\n').length : 0;
+		fbLine.lastChild.textContent = String(lines);
+		while (fbStat.firstChild) fbStat.removeChild(fbStat.firstChild);
+		fbStat.classList.remove('dd-fb-ok', 'dd-fb-warn');
+		if (phCount > 0) {
+			fbStat.classList.add('dd-fb-warn');
+			fbStat.textContent = _('⚠ %d placeholder').format(phCount);
+		} else {
+			fbStat.classList.add('dd-fb-ok');
+			fbStat.textContent = lines > 0 ? '✓ ready' : '— empty';
+		}
+	}
+
 	function refreshPlaceholders() {
 		const hits = detectPlaceholders(textarea.value);
 		const titleEl = phWarn.querySelector('.dd-ph-warn-title');
 		const howtoEl = phWarn.querySelector('.dd-ph-howto');
 		const listEl = phWarn.querySelector('.dd-ph-list');
 		while (listEl.firstChild) listEl.removeChild(listEl.firstChild);
+		refreshFooter(hits.length);
 		if (!hits.length) {
 			phWarn.classList.remove('show');
 			return;
@@ -571,6 +678,15 @@ function renderDaeEditor() {
 			.finally(function() { init.disabled = false; });
 	});
 
+	/* 一次性探测 dae --version；失败就显示 unknown，不影响主流程 */
+	fs.exec('/usr/bin/dae', ['--version']).then(function(res) {
+		const out = (res && res.stdout || '').trim();
+		const m = out.match(/dae\s+version\s+(\S+)/);
+		fbVer.lastChild.textContent = m ? m[1].split('-')[0] : 'unknown';
+	}).catch(function() {
+		fbVer.lastChild.textContent = 'unknown';
+	});
+
 	loadConfig();
 
 	return E('div', { 'class': 'dd-card' }, [
@@ -582,7 +698,8 @@ function renderDaeEditor() {
 		]),
 		phWarn,
 		textarea,
-		E('div', { 'class': 'dd-editor-actions' }, [ save, init, status ])
+		footer,
+		E('div', { 'class': 'dd-editor-actions' }, [ save, init, insertSelect, status ])
 	]);
 }
 
