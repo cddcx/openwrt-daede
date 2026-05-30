@@ -527,6 +527,34 @@ function ellipsisCell(section_id) {
 	return E('span', { 'title': v, 'style': 'font-family:ui-monospace,Menlo,monospace;font-size:12px' }, short);
 }
 
+/* Wrap every form section in a collapsible accordion. openTitles lists the
+   section titles that should start expanded; the rest start collapsed. */
+function accordionizeSections(mapNode, openTitles) {
+	const secs = mapNode.querySelectorAll('.cbi-section');
+	for (let i = 0; i < secs.length; i++) {
+		const sec = secs[i];
+		const h = sec.querySelector('h3');
+		const title = h ? h.textContent.trim() : _('Section');
+		const open = (openTitles || []).indexOf(title) >= 0;
+
+		const body = E('div', { 'class': 'dd-adv-body' });
+		while (sec.firstChild) body.appendChild(sec.firstChild);
+		/* drop the moved <h3> so it doesn't duplicate the accordion bar title */
+		const dupTitle = body.querySelector('h3');
+		if (dupTitle) dupTitle.parentNode.removeChild(dupTitle);
+
+		const wrap = E('div', { 'class': 'dd-adv' + (open ? '' : ' dd-closed') }, [
+			E('div', { 'class': 'dd-adv-bar' }, [
+				E('span', {}, title),
+				E('span', { 'class': 'dd-adv-chevron' }, '›')
+			]),
+			body
+		]);
+		wrap.firstChild.addEventListener('click', function() { wrap.classList.toggle('dd-closed'); });
+		sec.appendChild(wrap);
+	}
+}
+
 /* Friendly form UI for the dae backend. Form is the source of truth: on save we
    commit the `dae` UCI package, then gen-dae-config.sh renders config.dae,
    validates it and hot-reloads. */
@@ -554,6 +582,33 @@ function renderDaeForms() {
 	o = s.option(form.Flag, 'enabled', _('Enabled'));
 	o.default = '1';
 	o.editable = true;
+	/* add an Update button next to Edit/Delete in each row; dae re-pulls all
+	   subscriptions on reload, so the action is global regardless of the row */
+	const origRowActions = s.renderRowActions;
+	s.renderRowActions = function(section_id, more_label) {
+		const cell = origRowActions.call(this, section_id, more_label);
+		const btn = E('button', { 'class': 'cbi-button cbi-button-action', 'style': 'margin-right:.25em' }, _('Update'));
+		btn.addEventListener('click', function(ev) {
+			ev.preventDefault();
+			btn.disabled = true;
+			backend.detectRunning().then(function(r) {
+				if (!r || !r.dae)
+					return ui.addNotification(null, E('p', _('dae is stopped; it fetches subscriptions on start.')), 'warning');
+				return fs.exec(backend.BACKENDS.dae.initd, ['hot_reload']).then(function(res) {
+					if (res && res.code !== 0)
+						ui.addNotification(null, E('p', _('Update failed: %s').format(res.stderr || res.stdout || ('exit ' + res.code))), 'danger');
+					else
+						ui.addNotification(null, E('p', _('Subscriptions updated (dae reloaded)')), 'info');
+				});
+			}).catch(function(e) {
+				ui.addNotification(null, E('p', _('Update failed: %s').format(e.message || e)), 'danger');
+			}).finally(function() { btn.disabled = false; });
+		});
+		const firstBtn = cell.querySelector('button, a.cbi-button');
+		if (firstBtn && firstBtn.parentNode) firstBtn.parentNode.insertBefore(btn, firstBtn);
+		else cell.appendChild(btn);
+		return cell;
+	};
 
 	/* Manual nodes (share links) */
 	s = m.section(form.GridSection, 'node', _('Nodes'),
@@ -674,6 +729,9 @@ function renderDaeForms() {
 				})
 				.finally(function() { save.disabled = false; });
 		});
+
+		/* make each form section collapsible; keep the two everyday ones open */
+		accordionizeSections(mapNode, [ _('Subscriptions'), _('Nodes') ]);
 
 		return E('div', { 'class': 'dd-card dd-settings-card' }, [
 			E('h4', { 'class': 'dd-card-title' }, _('dae Configuration')),

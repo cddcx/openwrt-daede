@@ -589,3 +589,30 @@ msgstr "高级 / 手动模式"
 
 msgid "Edit config.dae directly. Saving the form above regenerates the file and overwrites changes made here."
 msgstr "直接编辑 config.dae。上方表单保存会重新生成文件并覆盖这里的改动。"
+
+msgid "Update Subscriptions"
+msgstr "更新订阅"
+
+msgid "Re-fetch all airport subscriptions (reloads dae)"
+msgstr "重新拉取所有机场订阅（重载 dae）"
+
+msgid "Updating subscriptions…"
+msgstr "更新订阅中…"
+
+msgid "dae is stopped; it fetches subscriptions on start."
+msgstr "dae 未运行，启动时会自动拉取订阅。"
+
+msgid "Update failed: %s"
+msgstr "更新失败：%s"
+
+msgid "Subscriptions updated (dae reloaded)"
+msgstr "订阅已更新（dae 已重载）"
+
+msgid "Section"
+msgstr "区块"
+
+msgid "DNS"
+msgstr "DNS"
+
+msgid "dae config file is empty. Click \"Initialize from example\" to start, or paste your config here."
+msgstr "dae 配置文件为空。点击「从示例初始化」开始，或直接在此粘贴你的配置。"
