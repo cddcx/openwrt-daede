@@ -388,3 +388,7 @@ msgstr ""
 #: dae.js
 msgid "Advanced settings"
 msgstr ""
+
+#: dae.js
+msgid "auto-generated"
+msgstr ""

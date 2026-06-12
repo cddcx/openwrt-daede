@@ -114,6 +114,29 @@ function ellipsisCell(section_id) {
 	return E('span', { 'title': v, 'style': 'font-family:ui-monospace,Menlo,monospace;font-size:12px' }, short);
 }
 
+/* Tag is auto-generated and rarely relevant to beginners — render it muted. */
+function mutedCell(section_id) {
+	const v = this.cfgvalue(section_id) || '';
+	return E('span', { 'class': 'dd-meta', 'style': 'opacity:.55;font-size:11.5px' }, v);
+}
+
+/* Fill blank tags of a section type with unique <prefix>_<n> values so dae's
+   config generator always has a stable identifier. Runs after m.save() wrote
+   the form values into the uci session, before uci.save(). */
+function autofillTags(stype, prefix) {
+	const secs = uci.sections('dae', stype) || [];
+	const used = {};
+	secs.forEach(function(s) { if (s.tag) used[s.tag] = 1; });
+	let n = 1;
+	secs.forEach(function(s) {
+		if (s.tag) return;
+		while (used[prefix + '_' + n]) n++;
+		const t = prefix + '_' + n;
+		uci.set('dae', s['.name'], 'tag', t);
+		used[t] = 1; n++;
+	});
+}
+
 /* Wrap every form section in a collapsible accordion. openTitles lists the
    section titles that should start expanded; the rest start collapsed. */
 function accordionizeSections(mapNode, openTitles) {
@@ -156,7 +179,8 @@ function renderDaeForms(ctx) {
 	s.anonymous = true;
 	s.sortable = false;
 	o = s.option(form.Value, 'tag', _('Tag'));
-	o.placeholder = 'my_sub';
+	o.placeholder = _('auto-generated');
+	o.textvalue = mutedCell;
 	o = s.option(form.Value, 'url', _('Subscription URL'));
 	o.rmempty = false;
 	o.placeholder = 'https://example.com/sub';
@@ -177,7 +201,8 @@ function renderDaeForms(ctx) {
 	s.anonymous = true;
 	s.sortable = false;
 	o = s.option(form.Value, 'tag', _('Tag'));
-	o.placeholder = 'node1';
+	o.placeholder = _('auto-generated');
+	o.textvalue = mutedCell;
 	o = s.option(form.Value, 'link', _('Share Link'));
 	o.rmempty = false;
 	o.placeholder = 'vmess://...';
@@ -291,6 +316,11 @@ function renderDaeForms(ctx) {
 			/* commit dae UCI (apply flushes the rpc session to /etc/config,
 			   which a CLI `uci commit` cannot see), then regenerate + hot reload */
 			m.save(null, true)
+				.then(function() {
+					/* assign unique tags to any rows the user left blank */
+					autofillTags('subscription', 'subscription');
+					autofillTags('node', 'node');
+				})
 				.then(function() { return uci.save(); })
 				.then(function() {
 					/* apply flushes the rpc session to /etc/config so the

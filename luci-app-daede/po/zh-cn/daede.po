@@ -673,3 +673,6 @@ msgstr "更新全部订阅"
 
 msgid "Advanced settings"
 msgstr "高级设置"
+
+msgid "auto-generated"
+msgstr "自动生成"
