@@ -56,8 +56,10 @@ const CSS = [
 	'.dd-settings-card .cbi-value-description,.dd-settings-card .cbi-value-helptext{font-size:11.5px !important;opacity:.6;line-height:1.45;padding-top:3px}',
 	'.dd-settings-card .cbi-section-remove{background:transparent !important;border:0 !important;box-shadow:none !important}',
 	'.dd-settings-card .cbi-section-remove .cbi-button{border-color:#d96d6d !important;color:#d96d6d !important}',
-	'.dd-settings-card input[type="checkbox"]{box-shadow:none !important;background-repeat:no-repeat !important;background-position:center !important;background-size:62% !important}',
-	'.dd-settings-card input[type="checkbox"]:before{content:none !important;display:none !important;box-shadow:none !important}',
+	/* themes (esp. Argon) restyle checkboxes into faint, near-invisible boxes;
+	   force native rendering + brand accent so the checkmark is always clear */
+	'.dd-settings-card input[type="checkbox"]{-webkit-appearance:checkbox !important;appearance:checkbox !important;accent-color:#4aa065;width:16px;height:16px;background:none !important;border:0 !important;box-shadow:none !important;background-image:none !important}',
+	'.dd-settings-card input[type="checkbox"]:before,.dd-settings-card input[type="checkbox"]:after{content:none !important;display:none !important}',
 	/* line the Subscriptions and Nodes grid tables up column-for-column. fixed
 	   layout + explicit per-column percentages make the widths authoritative
 	   across themes (Argon's auto layout otherwise sizes the empty Nodes table
