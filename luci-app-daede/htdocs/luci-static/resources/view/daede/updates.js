@@ -435,6 +435,7 @@ return view.extend({
 				}).then(function() {
 					logPane.textContent = _('Geo data source saved.');
 					logPane.classList.add('show');
+					ui.changes.init();
 				}).catch(function(e) {
 					logPane.textContent = _('Save failed') + ': ' + (e && e.message ? e.message : e);
 					logPane.classList.add('show');
