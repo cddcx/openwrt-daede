@@ -67,6 +67,8 @@
 				"/sbin/ip netns del daens": [ "exec" ],
 				"/usr/share/luci-app-daede/update-geo.sh geoip": [ "exec" ],
 				"/usr/share/luci-app-daede/update-geo.sh geosite": [ "exec" ],
+				"/usr/share/luci-app-daede/geo-cron.sh enable": [ "exec" ],
+				"/usr/share/luci-app-daede/geo-cron.sh disable": [ "exec" ],
 				"/usr/share/luci-app-daede/update-pkg.sh dae": [ "exec" ],
 				"/usr/share/luci-app-daede/update-pkg.sh daed": [ "exec" ],
 				"/usr/share/luci-app-daede/update-pkg.sh luci-app-daede": [ "exec" ],
