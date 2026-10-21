@@ -199,8 +199,11 @@ gh release view "$tag" --json assets --jq '.assets[].name' | sort > "$rclone_dir
 diff -u "$rclone_dir/expected-assets" "$rclone_dir/actual-assets" || fail "Release has unexpected or missing assets"
 
 feed="r2:${R2_BUCKET}/openwrt-feed/daed"
+echo "=== [R2] uploading daed feed ==="
 rclone sync publish/feed/ "$feed/" --checksum --fast-list --transfers 8 --checkers 16
+echo "=== [R2] verifying uploaded daed feed ==="
 rclone check publish/feed/ "$feed/" --download --fast-list
+echo "=== [R2] daed feed upload verified ==="
 
 aggregate_url=$(GH_TOKEN="$AGGREGATE_FEED_TOKEN" gh workflow run aggregate-feed.yml \
     -R kenzok8/openwrt-clashoo --ref main \
