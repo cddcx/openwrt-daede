@@ -489,7 +489,7 @@ if [ "$PM" = "opkg" ]; then
 else
   echo "[WARN] no stable signing key yet, using --allow-untrusted; sha256 is verified above when the manifest provides it."
   # shellcheck disable=SC2086
-  apk add --allow-untrusted $FILES || _install_rc=$?
+  apk add --allow-untrusted --force-non-repository $FILES || _install_rc=$?
 fi
 
 # opkg/apk can exit 0 yet skip the core package on a dependency hiccup (issue #30),
