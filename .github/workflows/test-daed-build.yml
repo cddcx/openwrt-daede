@@ -38,6 +38,13 @@ on:
           - all
           - "24.10"
           - "25.12"
+      golang_branch:
+        description: Golang feed branch (kenzok8/golang)
+        type: choice
+        default: "1.26"
+        options:
+          - "1.26"
+          - "1.27"
 
 permissions:
   contents: read
@@ -81,7 +88,7 @@ jobs:
           IGNORE_ERRORS: false
           INDEX: 1
           GOLANG_REPO: https://github.com/kenzok8/golang
-          GOLANG_BRANCH: '1.26'
+          GOLANG_BRANCH: ${{ inputs.golang_branch || '1.26' }}
 
       - name: Validate requested packages
         id: validate
