@@ -64,36 +64,3 @@ jobs:
             fi
           done
           echo "candidate tag cleanup done"
-
-      - name: Prune orphan v* tags
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-        run: |
-          set -euo pipefail
-          # promote 会先推 tag 再建 release；若建 release 那步失败，就留下一个
-          # 没有 release 的 v* tag，而上面的清理只遍历 release，永远看不到它。
-          # 这里只清超过 7 天、且确认没有 release 的 v* tag。
-          cutoff=$(date -d '7 days ago' +%s)
-          gh release list -R "$REPO" --limit 200 --json tagName --jq '.[].tagName' | sort > released.txt
-          git ls-remote --tags origin | sed 's|.*refs/tags/||' | grep -v '\^{}$' \
-            | grep '^v20' | sort > all_tags.txt
-          comm -23 all_tags.txt released.txt > orphan_tags.txt || true
-          if [ ! -s orphan_tags.txt ]; then
-            echo "No orphan v* tags."
-            exit 0
-          fi
-          git -c credential.helper='!gh auth git-credential' \
-            fetch -q origin 'refs/tags/v20*:refs/tags/v20*' || true
-          while read -r tag; do
-            [ -n "$tag" ] || continue
-            ctime=$(git log -1 --format=%ct "$tag" 2>/dev/null || echo 0)
-            if [ "$ctime" -lt "$cutoff" ]; then
-              echo "Deleting orphan tag without release: $tag"
-              git -c credential.helper='!gh auth git-credential' \
-                push origin --delete "refs/tags/$tag" 2>/dev/null \
-                || echo "warning: cannot delete $tag"
-            else
-              echo "Keeping recent orphan tag: $tag"
-            fi
-          done < orphan_tags.txt
