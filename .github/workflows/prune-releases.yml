@@ -16,10 +16,6 @@ jobs:
   prune:
     name: Prune old releases and candidate tags
     runs-on: ubuntu-latest
-    env:
-      # pin 源 release：dae/daed 的 PKG_SOURCE 就在这两个 release 里，删掉会让
-      # 别人的编译（以及 release.yml 的 SDK 构建）直接失败。任何清理步骤都必须跳过。
-      PROTECTED_TAGS: dae-src daed-src
     steps:
       - uses: actions/checkout@v6
         with:
@@ -40,9 +36,6 @@ jobs:
           else
             while read -r tag; do
               [ -n "$tag" ] || continue
-              case " $PROTECTED_TAGS " in
-                *" $tag "*) echo "skip protected pin source release: $tag"; continue ;;
-              esac
               echo "Deleting release & tag: $tag"
               gh release delete "$tag" -R "$REPO" --yes --cleanup-tag
             done < old_tags.txt
@@ -94,9 +87,6 @@ jobs:
             fetch -q origin 'refs/tags/v20*:refs/tags/v20*' || true
           while read -r tag; do
             [ -n "$tag" ] || continue
-            case " $PROTECTED_TAGS " in
-              *" $tag "*) echo "skip protected pin source release: $tag"; continue ;;
-            esac
             ctime=$(git log -1 --format=%ct "$tag" 2>/dev/null || echo 0)
             if [ "$ctime" -lt "$cutoff" ]; then
               echo "Deleting orphan tag without release: $tag"
